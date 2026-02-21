@@ -65,6 +65,13 @@ func (r *Request) IP() string {
 	return ip
 }
 
+func (r *Request) Context() context.Context {
+	if r.ctx != nil {
+		return r.ctx
+	}
+	return context.Background()
+}
+
 func (r *Request) WithContext(ctx context.Context) *Request {
 	if ctx == nil {
 		panic("muxy: nil context")
