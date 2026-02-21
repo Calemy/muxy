@@ -1,0 +1,58 @@
+package muxy
+
+import (
+	"net"
+	"net/http"
+)
+
+type Request struct {
+	*http.Request
+}
+
+func (r *Request) check(sFunc func(string) string, keys ...string) string {
+	if len(keys) == 0 {
+		panic("muxy: need to provide at least one key to check")
+	}
+
+	for _, key := range keys {
+		if s := sFunc(key); s != "" {
+			return s
+		}
+	}
+
+	if len(keys) < 2 { // * If there is no default value, return empty string
+		return ""
+	}
+
+	return keys[len(keys)-1] // * Returns last key as default value
+}
+
+func (r *Request) Query(keys ...string) string {
+	return r.check(r.Request.URL.Query().Get, keys...)
+}
+
+func (r *Request) Param(keys ...string) string {
+	return r.check(r.PathValue, keys...)
+}
+
+func (r *Request) Auth(fallback ...string) string {
+	auth := r.Header.Get("Authorization")
+	if auth != "" {
+		return auth
+	}
+
+	if len(fallback) == 0 {
+		return ""
+	}
+
+	return fallback[0]
+}
+
+func (r *Request) IP() string {
+	ip := r.Header.Get("X-Real-IP")
+	if ip == "" {
+		ip, _, _ = net.SplitHostPort(r.RemoteAddr)
+	}
+
+	return ip
+}
