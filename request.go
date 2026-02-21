@@ -8,8 +8,6 @@ import (
 
 type Request struct {
 	*http.Request
-	matches     []string          // values for the matching wildcards in pat
-	otherValues map[string]string // for calls to SetPathValue that don't match a wildcard
 }
 
 func (r *Request) check(sFunc func(string) string, keys ...string) string {
