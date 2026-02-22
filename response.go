@@ -2,6 +2,7 @@ package muxy
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"time"
 )
@@ -65,4 +66,8 @@ func (w *Response) Deprecate(deprecation time.Time, sunset ...time.Time) {
 		return
 	}
 	w.Header().Set("Sunset", sunset[0].Format(http.TimeFormat))
+}
+
+func (w *Response) Stream(r io.Reader) {
+	io.Copy(w, r)
 }
