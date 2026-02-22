@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -68,6 +69,21 @@ func (w *Response) Deprecate(deprecation time.Time, sunset ...time.Time) {
 	w.Header().Set("Sunset", sunset[0].Format(http.TimeFormat))
 }
 
-func (w *Response) Stream(r io.Reader) {
+func (w *Response) Stream(r io.Reader, contentType string, size ...int) {
+	w.Header().Set("Content-Type", contentType)
+	if len(size) > 0 {
+		w.Header().Set("Content-Length", strconv.Itoa(size[0]))
+	}
 	io.Copy(w, r)
+}
+
+func (w *Response) Reply(message string) {
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte(message))
+}
+
+func (w *Response) JSON(v interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	bytes, _ := json.Marshal(v)
+	w.Write(bytes)
 }
