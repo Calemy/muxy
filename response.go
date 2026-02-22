@@ -58,3 +58,11 @@ func (w *Response) Error(code int, err error) {
 	bytes, _ := json.Marshal(APIError{err.Error()})
 	w.Write(bytes)
 }
+
+func (w *Response) Deprecate(deprecation time.Time, sunset ...time.Time) {
+	w.Header().Set("Deprecated", deprecation.Format(http.TimeFormat))
+	if len(sunset) == 0 {
+		return
+	}
+	w.Header().Set("Sunset", sunset[0].Format(http.TimeFormat))
+}
