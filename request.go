@@ -94,14 +94,12 @@ func (r *Request) Auth(fallback ...string) string {
 }
 
 func (r *Request) IP(header ...string) string {
-	headers := []string{"CF-Connecting-IP", "X-Real-IP", "X-Forwarded-For"}
-
 	if len(header) > 0 {
-		headers = append(headers, header...)
+		header = append(header, "CF-Connecting-IP", "X-Real-IP", "X-Forwarded-For")
 	}
 
-	ip := r.check(r.Header.Get, headers...)
-	if ip == headers[len(headers)-1] {
+	ip := r.check(r.Header.Get, header...)
+	if ip == header[len(header)-1] {
 		ip, _, _ = net.SplitHostPort(r.RemoteAddr)
 	}
 
