@@ -1,6 +1,7 @@
 package muxy
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 )
@@ -10,39 +11,52 @@ type node struct {
 	static   map[string]*node
 	param    *node
 	wildcard *node
-	handler  http.Handler
+
 	paramKey string
+	handlers map[string]http.Handler
 }
 
-func (n *node) match(segments []string, params map[string]string) http.Handler {
-	if len(segments) == 0 {
-		return n.handler
-	}
+func (n *node) match(method string, segments []string, params map[string]string) http.Handler {
+	current := n
 
-	seg := segments[0]
-
-	if next, ok := n.static[seg]; ok {
-		if h := next.match(segments[1:], params); h != nil {
-			return h
+	for _, seg := range segments {
+		if current.static != nil {
+			if next, ok := current.static[seg]; ok {
+				current = next
+				continue
+			}
 		}
-	}
 
-	if n.param != nil {
-		params[n.param.paramKey] = seg
-		if h := n.param.match(segments[1:], params); h != nil {
-			return h
+		if current.param != nil {
+			params[current.param.paramKey] = seg
+			current = current.param
+			continue
 		}
-		delete(params, n.param.paramKey)
+
+		if current.wildcard != nil {
+			current = current.wildcard
+			break
+		}
+
+		return nil
 	}
 
-	if n.wildcard != nil {
-		return n.wildcard.handler
+	if current.handlers == nil {
+		return nil
+	}
+
+	if h := current.handlers[method]; h != nil {
+		return h
+	}
+
+	if h := current.handlers["*"]; h != nil {
+		return h
 	}
 
 	return nil
 }
 
-func (n *node) insert(path string, handler http.Handler) {
+func (n *node) insert(method, path string, handler http.Handler) {
 	segments := split(path)
 
 	current := n
@@ -79,5 +93,13 @@ func (n *node) insert(path string, handler http.Handler) {
 		}
 	}
 
-	current.handler = handler
+	if current.handlers == nil {
+		current.handlers = make(map[string]http.Handler)
+	}
+
+	if _, ok := current.handlers[method]; ok {
+		panic(fmt.Sprintf("muxy: route already exists -> %s %s", method, path))
+	}
+
+	current.handlers[method] = handler
 }
