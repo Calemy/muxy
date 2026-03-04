@@ -1,6 +1,9 @@
 package muxy
 
-import "net/http"
+import (
+	"net/http"
+	"strings"
+)
 
 // node represents a single node in the tree ordered by priority (static > param > wildcard)
 type node struct {
@@ -37,4 +40,44 @@ func (n *node) match(segments []string, params map[string]string) http.Handler {
 	}
 
 	return nil
+}
+
+func (n *node) insert(path string, handler http.Handler) {
+	segments := split(path)
+
+	current := n
+
+	for _, seg := range segments {
+
+		switch {
+		case strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}"):
+			key := seg[1 : len(seg)-1]
+
+			if current.param == nil {
+				current.param = &node{paramKey: key}
+			}
+
+			current = current.param
+
+		case seg == "*":
+			if current.wildcard == nil {
+				current.wildcard = &node{}
+			}
+
+			current = current.wildcard
+
+		default:
+			if current.static == nil {
+				current.static = make(map[string]*node)
+			}
+
+			if current.static[seg] == nil {
+				current.static[seg] = &node{}
+			}
+
+			current = current.static[seg]
+		}
+	}
+
+	current.handler = handler
 }
