@@ -1,11 +1,9 @@
 # muxy
-a mux router using chi as base so i don't have to figure out patterns :)
+a zero-dependancy mux router with useful features :)
 
 *A simple mux wrapper, without the common annoyances*
 
 Changes are expected.
-
-This is based on [chi](github.com/go-chi/chi) because wildcard patterns are hard :(
 
 ---
 
@@ -95,9 +93,7 @@ mux.HandleFunc("/error", func(w muxy.Response, r *muxy.Request) {
 
 We added shortcuts to certain request headers to make your life a little easier. Those include but are not limited to:
 - Auth (Authentication)
-- IP (X-Real-IP, RemoteAddress)
-
-Note: We are aware of cloudflare, and forwarded headers. Those will be added at a later time.
+- IP (X-Real-IP, X-Forwarded-For, CF-Connecting-IP, RemoteAddress) you can also pass your own headers
 
 ---
 
@@ -142,9 +138,6 @@ func main() {
 ## Roadmap
 
 We have a list of things we want to shortcut or improve including:
-- response.Stream
-- response.Reply (string)
-- improve request.IP Headers
 - grouping
 
 If you find this package useful, feel free to leave a star on the repository!
