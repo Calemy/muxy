@@ -138,7 +138,7 @@ func main() {
 ## Roadmap
 
 We have a list of things we want to shortcut or improve including:
-- grouping
+- Everything is done that we have planned, but this list can be appended to at any time.
 
 If you find this package useful, feel free to leave a star on the repository!
 
