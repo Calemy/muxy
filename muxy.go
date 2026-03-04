@@ -3,22 +3,23 @@ package muxy
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
-
-	"github.com/go-chi/chi/v5"
 )
 
 type Mux struct {
-	mux     *chi.Mux
-	handler http.Handler
+	mux             *http.ServeMux
+	tree            *node
+	notFoundHandler http.HandlerFunc
+	handler         http.Handler
 }
 
 func New() *Mux {
-	s := &Mux{mux: chi.NewMux()}
+	s := &Mux{mux: http.NewServeMux()}
 	notFound := HandlerFunc(func(w *Response, r *Request) {
 		w.Error(404, errors.New("Route not found"))
 	})
-	s.mux.NotFound(notFound)
+	s.notFoundHandler = notFound
 	return s
 }
 
@@ -46,5 +47,31 @@ func (s *Mux) Handle(pattern string, handler http.Handler) {
 
 func (s *Mux) ServeHTTP(w *Response, r *Request) {
 	w.Start = time.Now()
-	s.mux.ServeHTTP(w, r.Request)
+
+	path := r.URL.Path
+
+	segments := split(path)
+
+	params := make(map[string]string)
+
+	handler := s.tree.match(segments, params)
+
+	if handler == nil {
+		if s.notFoundHandler == nil {
+			http.NotFound(w, r.Request)
+			return
+		}
+		s.notFoundHandler.ServeHTTP(w, r.Request)
+		return
+	}
+
+	handler.ServeHTTP(w, r.Request)
+}
+
+func split(path string) []string {
+	if path == "/" {
+		return nil
+	}
+
+	return strings.Split(strings.Trim(path, "/"), "/")
 }
