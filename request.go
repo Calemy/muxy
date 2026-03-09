@@ -94,9 +94,7 @@ func (r *Request) Auth(fallback ...string) string {
 }
 
 func (r *Request) IP(header ...string) string {
-	if len(header) > 0 {
-		header = append(header, "CF-Connecting-IP", "X-Real-IP", "X-Forwarded-For")
-	}
+	header = append(header, "CF-Connecting-IP", "X-Real-IP", "X-Forwarded-For")
 
 	ip := r.check(r.Header.Get, header...)
 	if ip == header[len(header)-1] {
