@@ -6,63 +6,88 @@ import (
 	"strings"
 )
 
-// node represents a single node in the tree ordered by priority (static > param > wildcard)
+type edge struct {
+	segment string
+	node    *node
+}
+
+// node represents a single node in the routing tree
+// ordered by priority: static > param > wildcard
 type node struct {
-	static   map[string]*node
+	static   []edge
 	param    *node
 	wildcard *node
 
 	paramKey string
-	handlers map[string]http.Handler
+
+	handlers        map[string]http.Handler // exact match
+	subtreeHandlers map[string]http.Handler // /path/ subtree match
 }
 
 func (n *node) match(method string, segments []string, params map[string]string) http.Handler {
 	current := n
+	var subtree *node
 
 	for _, seg := range segments {
-		if current.static != nil {
-			if next, ok := current.static[seg]; ok {
-				current = next
-				continue
+
+		if current.subtreeHandlers != nil {
+			subtree = current
+		}
+
+		for i := range current.static {
+			if current.static[i].segment == seg {
+				current = current.static[i].node
+				goto matched
 			}
 		}
 
 		if current.param != nil {
 			params[current.param.paramKey] = seg
 			current = current.param
-			continue
+			goto matched
 		}
 
 		if current.wildcard != nil {
 			current = current.wildcard
-			break
+			goto matched
 		}
 
-		return nil
+		goto fallback
+
+	matched:
 	}
 
-	if current.handlers == nil {
-		return nil
+	if current.handlers != nil {
+		if h := current.handlers[method]; h != nil {
+			return h
+		}
+
+		if h := current.handlers["*"]; h != nil {
+			return h
+		}
 	}
 
-	if h := current.handlers[method]; h != nil {
-		return h
-	}
+fallback:
+	if subtree != nil {
+		if h := subtree.subtreeHandlers[method]; h != nil {
+			return h
+		}
 
-	if h := current.handlers["*"]; h != nil {
-		return h
+		if h := subtree.subtreeHandlers["*"]; h != nil {
+			return h
+		}
 	}
 
 	return nil
 }
 
 func (n *node) insert(method, path string, handler http.Handler) {
-	segments := split(path)
+	isSubtree := strings.HasSuffix(path, "/") && path != "/"
 
+	segments := split(path)
 	current := n
 
 	for _, seg := range segments {
-
 		switch {
 		case strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}"):
 			key := seg[1 : len(seg)-1]
@@ -81,16 +106,38 @@ func (n *node) insert(method, path string, handler http.Handler) {
 			current = current.wildcard
 
 		default:
-			if current.static == nil {
-				current.static = make(map[string]*node)
+			var next *node
+
+			for i := range current.static {
+				if current.static[i].segment == seg {
+					next = current.static[i].node
+					break
+				}
 			}
 
-			if current.static[seg] == nil {
-				current.static[seg] = &node{}
+			if next == nil {
+				next = &node{}
+				current.static = append(current.static, edge{
+					segment: seg,
+					node:    next,
+				})
 			}
 
-			current = current.static[seg]
+			current = next
 		}
+	}
+
+	if isSubtree {
+		if current.subtreeHandlers == nil {
+			current.subtreeHandlers = make(map[string]http.Handler)
+		}
+
+		if _, ok := current.subtreeHandlers[method]; ok {
+			panic(fmt.Sprintf("muxy: subtree route already exists -> %s %s", method, path))
+		}
+
+		current.subtreeHandlers[method] = handler
+		return
 	}
 
 	if current.handlers == nil {
