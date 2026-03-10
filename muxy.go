@@ -106,6 +106,10 @@ func (s *Mux) ServeHTTP(w *Response, r *Request) {
 		return
 	}
 
+	for k, v := range params {
+		r.Request.SetPathValue(k, v)
+	}
+
 	handler.ServeHTTP(w, r.Request)
 }
 
