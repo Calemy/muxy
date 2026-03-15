@@ -69,19 +69,34 @@ func (s *Mux) Delete(pattern string, handler func(w Response, r *Request)) {
 }
 
 func (s *Mux) handle(method string, pattern string, handler http.Handler) {
-	path := s.prefix + pattern
+	var path string
+
+	if pattern == "/" {
+		path = clean(s.prefix)
+		if path == "" {
+			path = "/"
+		}
+	} else {
+		path = join(s.prefix, pattern)
+	}
 
 	if s.tree == nil {
 		s.tree = &node{}
 	}
 
-	s.tree.insert(method, path, handler)
+	if method == "*" {
+		for _, m := range []string{"GET", "POST", "PUT", "PATCH", "DELETE"} {
+			s.tree.insert(m, path, handler)
+		}
+	} else {
+		s.tree.insert(method, path, handler)
+	}
 }
 
 func (s *Mux) Group(prefix string) *Mux {
 	return &Mux{
 		tree:            s.tree,
-		prefix:          s.prefix + clean(prefix),
+		prefix:          join(s.prefix, prefix),
 		notFoundHandler: s.notFoundHandler,
 	}
 }
@@ -137,4 +152,16 @@ func clean(p string) string {
 	}
 
 	return strings.TrimRight(p, "/")
+}
+
+func join(a, b string) string {
+	if a == "" {
+		return clean(b)
+	}
+
+	if b == "" {
+		return clean(a)
+	}
+
+	return clean(a + "/" + strings.TrimLeft(b, "/"))
 }
