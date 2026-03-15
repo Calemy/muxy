@@ -62,6 +62,12 @@ func (r *Request) checkArray(keys ...string) []string {
 	return make([]string, 0)
 }
 
+/*
+Queries returns the values of the given keys from the request query.
+If no key is not found, an empty array is returned.
+
+The order of seperated values is ?query=value1&query=value2 > ?query=value1,value2
+*/
 func (r *Request) Queries(keys ...string) []string {
 	value := r.checkArray(keys...)
 	if len(value) == 0 { //* If the key is not found, return empty array
@@ -72,10 +78,22 @@ func (r *Request) Queries(keys ...string) []string {
 	return value
 }
 
+/*
+Query returns the first value of the given keys from the request query.
+
+If more than one key is given, the last value is returned as a fallback, otherwise an empty string is returned.
+*/
 func (r *Request) Query(keys ...string) string {
 	return r.check(r.Request.URL.Query().Get, keys...)
 }
 
+// ? Should this really be an array? In case we could make a fallback argument | Only on minor version bump
+
+/*
+Param returns the first value of the given keys from the request path.
+
+If more than one key is given, the last value is returned as a fallback, otherwise an empty string is returned.
+*/
 func (r *Request) Param(keys ...string) string {
 	return r.check(r.PathValue, keys...)
 }
@@ -93,6 +111,13 @@ func (r *Request) Auth(fallback ...string) string {
 	return fallback[0]
 }
 
+/*
+IP returns the first value of the given keys from the request headers.
+
+If the ip cannot be found in the headers, the remote address is used.
+
+Following headers are checked by default: CF-Connecting-IP, X-Real-IP, X-Forwarded-For
+*/
 func (r *Request) IP(header ...string) string {
 	header = append(header, "CF-Connecting-IP", "X-Real-IP", "X-Forwarded-For")
 
@@ -104,15 +129,18 @@ func (r *Request) IP(header ...string) string {
 	return ip
 }
 
+// Aquires the context from the request
 func (r *Request) Context() context.Context {
 	return r.Request.Context()
 }
 
+// Sets the context to the request
 func (r *Request) WithContext(ctx context.Context) *Request {
 	r.Request = r.Request.WithContext(ctx)
 	return r
 }
 
+// Clones the request with the given context
 func (r *Request) Clone(ctx context.Context) *Request {
 	r.Request = r.Request.Clone(ctx)
 	return r
